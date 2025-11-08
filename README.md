@@ -26,6 +26,8 @@ Extended by Alexander Dunkel [sieboldianus on Github](https://github.com/Siebold
 - **Client-Side:** Runs entirely in your browser; no data is sent to any server.
 - **Export HTML Archive**: Export the loaded JSON to a static HTML archive (e.g. for web sharing purposes)
 
+![Screenshot of Static HTML Archive Output](screenshot_archive.webp)
+
 ## How to Use
 
 1.  **Clone or Download:**
