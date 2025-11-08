@@ -198,29 +198,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function populatePromptList() {
-        const promptListEl = document.getElementById('prompt-list');
-        promptListEl.innerHTML = '';
-        if (currentPrompts.length === 0) {
-            promptListEl.innerHTML = '<p class="placeholder">No prompts to display.</p>';
-            return;
-        }
-        currentPrompts.forEach((prompt, index) => {
-            const listItem = document.createElement('div');
-            listItem.classList.add('prompt-item');
-            listItem.textContent = truncateText(prompt.text, 60);
-            listItem.title = prompt.text.substring(0, 200) + (prompt.text.length > 200 ? '...' : '');
-            listItem.setAttribute('data-full-text', prompt.text);
-            listItem.dataset.index = index;
-            listItem.onclick = () => displayPromptAndAnswer(index);
-            promptListEl.appendChild(listItem);
-        });
+function populatePromptList() {
+    const promptListEl = document.getElementById('prompt-list');
+    promptListEl.innerHTML = '';
+    if (currentPrompts.length === 0) {
+        promptListEl.innerHTML = '<p class="placeholder">No prompts to display.</p>';
+        return;
     }
+    currentPrompts.forEach((prompt, index) => {
+        const listItem = document.createElement('div');
+        listItem.classList.add('prompt-item');
+
+        // Use a fallback text if prompt.text is missing or empty
+        const promptText = prompt.text || 'Prompt with no text';
+
+        listItem.textContent = truncateText(promptText, 60);
+        listItem.title = promptText.substring(0, 200) + (promptText.length > 200 ? '...' : '');
+        listItem.setAttribute('data-full-text', promptText);
+        listItem.dataset.index = index;
+        listItem.onclick = () => displayPromptAndAnswer(index);
+        promptListEl.appendChild(listItem);
+    });
+}
 
     function createMessageDiv(chunk, isInitiallyCollapsed = false) {
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('message');
-        
+
         // Determine message type and header text based on chunk.role
         let headerText = 'Unknown Role';
         if (chunk.role === 'user') {
