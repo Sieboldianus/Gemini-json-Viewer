@@ -134,9 +134,7 @@ Contributions, bug reports, and feature requests are welcome! Please feel free t
 
 - More robust error handling for slight variations in the Gemini JSON structure.
 - Advanced search/filtering options (e.g., filter by "thought" steps, search within responses).
-- Option to save the current view or a processed version.
 - UI Theming (e.g., light/dark mode for the viewer).
-- Better handling of image/multimedia content if present in Gemini exports.
 
 ## License
 
