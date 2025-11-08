@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const fileInput = document.getElementById('fileInput');
     const viewCompleteDialogBtn = document.getElementById('viewCompleteDialogBtn');
+    const exportHtmlBtn = document.getElementById('exportHtmlBtn');
     const searchPromptsInput = document.getElementById('searchPrompts');
     const copyConfirmationPopup = document.getElementById('copy-confirmation');
 
@@ -61,6 +62,14 @@ document.addEventListener('DOMContentLoaded', () => {
             displayCompleteDialog();
         } else {
             alert("Please load a file first.");
+        }
+    });
+
+    exportHtmlBtn.addEventListener('click', () => {
+        if (parsedData) {
+            exportConversationToHtml();
+        } else {
+            alert("Please load a file first to export.");
         }
     });
 
@@ -145,18 +154,41 @@ document.addEventListener('DOMContentLoaded', () => {
         displaySystemInstruction(parsedData.systemInstruction);
 
         currentPrompts = [];
-        const chunks = parsedData.chunkedPrompt?.chunks || [];
-        for (let i = 0; i < chunks.length; i++) {
-            if (chunks[i].role === 'user') {
-                // Ensure the 'role' property is explicitly set for currentPrompts items
+        const allChunks = parsedData.chunkedPrompt?.chunks || [];
+
+        for (let i = 0; i < allChunks.length; i++) {
+            const chunk = allChunks[i];
+            if (chunk.role === 'user') {
+                let promptText = chunk.text;
+                let displayLabel = promptText; // The text to be used for display purposes
+
+                // If text is missing, check for a document
+                if (!promptText && chunk.driveDocument) {
+                    // Default placeholder
+                    displayLabel = '[Uploaded Document]';
+
+                    // Look ahead to the next chunk to find a potential filename
+                    const nextChunk = allChunks[i + 1];
+                    if (nextChunk && nextChunk.role === 'user' && nextChunk.text) {
+                        // Use a regular expression to find something that looks like a filename in backticks or quotes.
+                        const filenameMatch = nextChunk.text.match(/`([^`]+)`/); // Looks for `filename.ext`
+                        if (filenameMatch && filenameMatch[1]) {
+                            displayLabel = `[Uploaded File: ${filenameMatch[1]}]`;
+                        }
+                    }
+                    // We use the displayLabel for the prompt list, but the 'text' for the content can remain null/undefined
+                    promptText = displayLabel;
+                }
+
                 currentPrompts.push({
-                    role: 'user', // <<< ADDED THIS
-                    text: chunks[i].text,
-                    tokenCount: chunks[i].tokenCount,
+                    role: 'user',
+                    text: promptText, // This text will be displayed in the main view
+                    tokenCount: chunk.tokenCount,
                     originalIndexInChunks: i
                 });
             }
         }
+
         populatePromptList();
         if (currentPrompts.length > 0) {
             displayPromptAndAnswer(0);
