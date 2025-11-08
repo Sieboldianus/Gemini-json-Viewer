@@ -24,6 +24,7 @@ Extended by Alexander Dunkel [sieboldianus on Github](https://github.com/Siebold
   - Syntax highlighting for code blocks using Highlight.js.
 - **Copy Code:** "Copy" button for quickly copying code snippets from responses.
 - **Client-Side:** Runs entirely in your browser; no data is sent to any server.
+- **Export HTML Archive**: Export the loaded JSON to a static HTML archive (e.g. for web sharing purposes)
 
 ## How to Use
 
@@ -141,4 +142,4 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ---
 
-_Project by Marcel Mayr ([@ marcelamayr on GitHub](https://github.com/marcelamayr) | [marcelamayr.com](https://marcelamayr.com))_
+_Project by Marcel Mayr ([@ marcelamayr on GitHub](https://github.com/marcelamayr) | [marcelamayr.com](https://marcelamayr.com))_, Extended by Alexander Dunkel [sieboldianus on Github](https://github.com/Sieboldianus), [@alex on social media](https://himself.alexanderdunkel.com/).
