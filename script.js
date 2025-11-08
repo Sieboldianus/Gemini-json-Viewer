@@ -155,37 +155,78 @@ document.addEventListener('DOMContentLoaded', () => {
 
         currentPrompts = [];
         const allChunks = parsedData.chunkedPrompt?.chunks || [];
+        let i = 0; // Use a while loop for more control over the index
 
-        for (let i = 0; i < allChunks.length; i++) {
+        while (i < allChunks.length) {
             const chunk = allChunks[i];
-            if (chunk.role === 'user') {
-                let promptText = chunk.text;
-                let displayLabel = promptText; // The text to be used for display purposes
 
-                // If text is missing, check for a document
-                if (!promptText && chunk.driveDocument) {
-                    // Default placeholder
-                    displayLabel = '[Uploaded Document]';
+            if (chunk.role !== 'user') {
+                i++;
+                continue; // Skip non-user chunks in the main loop
+            }
 
-                    // Look ahead to the next chunk to find a potential filename
-                    const nextChunk = allChunks[i + 1];
-                    if (nextChunk && nextChunk.role === 'user' && nextChunk.text) {
-                        // Use a regular expression to find something that looks like a filename in backticks or quotes.
-                        const filenameMatch = nextChunk.text.match(/`([^`]+)`/); // Looks for `filename.ext`
-                        if (filenameMatch && filenameMatch[1]) {
-                            displayLabel = `[Uploaded File: ${filenameMatch[1]}]`;
-                        }
-                    }
-                    // We use the displayLabel for the prompt list, but the 'text' for the content can remain null/undefined
-                    promptText = displayLabel;
-                }
-
+            // Case 1: This is a normal text chunk that is NOT preceded by file uploads.
+            if (chunk.text) {
                 currentPrompts.push({
                     role: 'user',
-                    text: promptText, // This text will be displayed in the main view
+                    text: chunk.text,
+                    displayText: chunk.text, // For text chunks, display text is the same
                     tokenCount: chunk.tokenCount,
                     originalIndexInChunks: i
                 });
+                i++;
+                continue;
+            }
+
+            // Case 2: This is the start of one or more file upload chunks.
+            if (chunk.driveDocument) {
+                const fileChunks = [];
+                // Step A: Collect all consecutive file uploads starting from here.
+                let fileScanIndex = i;
+                while (fileScanIndex < allChunks.length && allChunks[fileScanIndex].driveDocument && allChunks[fileScanIndex].role === 'user') {
+                    fileChunks.push({ ...allChunks[fileScanIndex], originalIndexInChunks: fileScanIndex });
+                    fileScanIndex++;
+                }
+
+                // Step B: Now, scan forward to find the very next text chunk.
+                let textChunk = null;
+                let textScanIndex = fileScanIndex;
+                while (textScanIndex < allChunks.length) {
+                    if (allChunks[textScanIndex].role === 'user' && allChunks[textScanIndex].text) {
+                        textChunk = allChunks[textScanIndex];
+                        break;
+                    }
+                    textScanIndex++;
+                }
+
+                // Step C: Extract filenames from that text chunk using a safer regex.
+                let cleanFilenames = [];
+                if (textChunk) {
+                    // This regex now looks for filenames with extensions, avoiding URLs.
+                    const filenameRegex = /`([^`]+?\.\w+)`|\(([^)\s/]+\.\w+)\)/g;
+                    const matches = [...textChunk.text.matchAll(filenameRegex)];
+                    cleanFilenames = matches.map(match => match[1] || match[2]);
+                }
+
+                // Step D: Process the collected file chunks, assigning names in order.
+                fileChunks.forEach((fileChunk, index) => {
+                    let textForDisplay = '[Uploaded Document]'; // Default fallback
+                    if (index < cleanFilenames.length) {
+                        // First file gets first name, second gets second, etc.
+                        textForDisplay = `[File: ${cleanFilenames[index]}]`;
+                    }
+
+                    currentPrompts.push({
+                        role: 'user',
+                        text: null, // File chunks have no real text content
+                        displayText: textForDisplay,
+                        tokenCount: fileChunk.tokenCount,
+                        originalIndexInChunks: fileChunk.originalIndexInChunks
+                    });
+                });
+
+                // Step E: Jump the main loop index past the file chunks we just processed.
+                i = fileScanIndex;
             }
         }
 
@@ -209,12 +250,16 @@ function populatePromptList() {
         const listItem = document.createElement('div');
         listItem.classList.add('prompt-item');
 
-        // Use a fallback text if prompt.text is missing or empty
-        const promptText = prompt.text || 'Prompt with no text';
+        // Use the new displayText property for the list item's visible text.
+        const textForListItem = prompt.displayText || 'Prompt with no text';
 
-        listItem.textContent = truncateText(promptText, 60);
-        listItem.title = promptText.substring(0, 200) + (promptText.length > 200 ? '...' : '');
-        listItem.setAttribute('data-full-text', promptText);
+        // The full text for search/tooltip should use the displayText as a fallback.
+        const fullTextForSearch = prompt.text || prompt.displayText || '';
+
+        listItem.textContent = truncateText(textForListItem, 60);
+        listItem.title = fullTextForSearch.substring(0, 200) + (fullTextForSearch.length > 200 ? '...' : '');
+        listItem.setAttribute('data-full-text', fullTextForSearch);
+
         listItem.dataset.index = index;
         listItem.onclick = () => displayPromptAndAnswer(index);
         promptListEl.appendChild(listItem);
