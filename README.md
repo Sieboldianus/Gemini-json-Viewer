@@ -28,7 +28,7 @@ Extended by Alexander Dunkel [sieboldianus on Github](https://github.com/Siebold
 - **File Name Extraction**: Uploaded Documents are referenced by Drive-ID in the json, which means that 
   File Names are not directly available in exported Gemini JSONs. The script includes a logic to extract file
   names from user prompts via look-ahead. To use this, add file names of attached files in your prompts with single quotes (e.g. \`filename.pdf\`)
-  and the loaded prompt list will show the file name instead oif "[Uploaded File]".
+  and the loaded prompt list will show the file name instead of "[Uploaded File]".
 
 ![Screenshot of Static HTML Archive Output](screenshot_archive.webp)
 
