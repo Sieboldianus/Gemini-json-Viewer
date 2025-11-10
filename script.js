@@ -167,8 +167,9 @@ document.addEventListener('DOMContentLoaded', () => {
         currentPrompts = [];
         const allChunks = parsedData.chunkedPrompt?.chunks || [];
         
-        // FIX: Introduce a counter that persists across all file blocks.
-        let globalFileCounter = 0;
+        // FIX: Create separate counters for documents and images
+        let globalDocCounter = 0;
+        let globalImageCounter = 0;
 
         for (let i = 0; i < allChunks.length; i++) {
             const chunk = allChunks[i];
@@ -188,17 +189,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 continue;
             }
 
-            if (chunk.driveDocument) {
+            // Check for EITHER driveDocument OR driveImage
+            if (chunk.driveDocument || chunk.driveImage) {
                 const fileChunks = [];
                 let fileScanIndex = i;
-                while (fileScanIndex < allChunks.length && allChunks[fileScanIndex].driveDocument && allChunks[fileScanIndex].role === 'user') {
+                // Collect all consecutive file uploads (docs OR images)
+                while (fileScanIndex < allChunks.length && (allChunks[fileScanIndex].driveDocument || allChunks[fileScanIndex].driveImage) && allChunks[fileScanIndex].role === 'user') {
                     fileChunks.push({ ...allChunks[fileScanIndex], originalIndexInChunks: fileScanIndex });
                     fileScanIndex++;
                 }
 
                 let textChunk = null;
                 for (let textScanIndex = fileScanIndex; textScanIndex < allChunks.length; textScanIndex++) {
-                    if (allChunks[textScanIndex].role === 'user' && allChunks[textScanIndex].text) {
+                    if (allChunks[textScanIndex].text) {
                         textChunk = allChunks[textScanIndex];
                         break;
                     }
@@ -206,17 +209,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 let cleanFilenames = [];
                 if (textChunk) {
-                    const filenameRegex = /`([^`]+?\.\w+)`|\(([^)\s/]+\.\w+)\)/g;
+                    const filenameRegex = /`([^`]+?\.\w+)`|\(([^)\s/]+\.\w+)\)|"([^"]+?\.\w+)"/g;
                     const matches = [...textChunk.text.matchAll(filenameRegex)];
-                    cleanFilenames = matches.map(match => match[1] || match[2]);
+                    cleanFilenames = matches.map(match => match[1] || match[2] || match[3]);
                 }
 
                 fileChunks.forEach((fileChunk, index) => {
-                    // FIX: Use and increment the global counter for consistent numbering.
-                    globalFileCounter++; 
-                    let textForDisplay = `[Uploaded Document #${globalFileCounter}]`; // Use global counter
+                    let textForDisplay;
                     
+                    // Set the correct fallback text and counter based on type
+                    if (fileChunk.driveImage) {
+                        globalImageCounter++;
+                        textForDisplay = `[Uploaded Image #${globalImageCounter}]`;
+                    } else { // It must be a driveDocument
+                        globalDocCounter++;
+                        textForDisplay = `[Uploaded Document #${globalDocCounter}]`;
+                    }
+                    
+                    // If a filename is found, it overrides the default fallback
                     if (index < cleanFilenames.length) {
+                        // The term "File" is generic and works for both images and docs
                         textForDisplay = `[File: ${cleanFilenames[index]}]`;
                     }
 
