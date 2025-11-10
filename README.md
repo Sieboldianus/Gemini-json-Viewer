@@ -25,8 +25,8 @@ Extended by Alexander Dunkel [sieboldianus on Github](https://github.com/Siebold
 - **Copy Code:** "Copy" button for quickly copying code snippets from responses.
 - **Client-Side:** Runs entirely in your browser; no data is sent to any server.
 - **Export HTML Archive**: Export the loaded JSON to a static HTML archive (e.g. for web sharing purposes)
-- **File Name Extraction**: Uploaded Documents are referenced by Drive-ID in the json, which means that 
-  File Names are not directly available in exported Gemini JSONs. The script includes a logic to extract file
+- **File Name Extraction**: Uploaded documents in prompts are referenced by GDrive-ID, which means that 
+  file names are not directly available in exported Gemini JSONs. The script includes a logic to extract file
   names from user prompts via look-ahead. To use this, add file names of attached files in your prompts with single quotes (e.g. \`filename.pdf\`)
   and the loaded prompt list will show the file name instead of "[Uploaded File]".
 
