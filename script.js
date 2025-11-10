@@ -134,11 +134,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
+                    // Show immediate feedback to the user
+                    document.getElementById('answer-view').innerHTML = `<p class="placeholder">Processing large file, please wait...</p>`;
+                    document.getElementById('prompt-list').innerHTML = `<p class="placeholder">Processing...</p>`;
+                    
                     parsedData = JSON.parse(e.target.result);
-                    processLlmOutput();
+
+                    // Defer the heavy processing to unblock the UI
+                    // A small delay (e.g., 50ms) is enough for the browser to repaint
+                    setTimeout(() => {
+                        processLlmOutput();
+                    }, 50);
+
                 } catch (error) {
                     console.error("Error parsing JSON:", error);
                     document.getElementById('answer-view').innerHTML = `<p class="placeholder error">Error parsing file. Please ensure it's valid JSON.</p>`;
+                    document.getElementById('prompt-list').innerHTML = ''; // Clear processing message on error
                     alert("Invalid JSON file. Check console for details.");
                 }
             };
@@ -155,78 +166,70 @@ document.addEventListener('DOMContentLoaded', () => {
 
         currentPrompts = [];
         const allChunks = parsedData.chunkedPrompt?.chunks || [];
-        let i = 0; // Use a while loop for more control over the index
+        
+        // FIX: Introduce a counter that persists across all file blocks.
+        let globalFileCounter = 0;
 
-        while (i < allChunks.length) {
+        for (let i = 0; i < allChunks.length; i++) {
             const chunk = allChunks[i];
 
             if (chunk.role !== 'user') {
-                i++;
-                continue; // Skip non-user chunks in the main loop
+                continue;
             }
 
-            // Case 1: This is a normal text chunk that is NOT preceded by file uploads.
             if (chunk.text) {
                 currentPrompts.push({
                     role: 'user',
                     text: chunk.text,
-                    displayText: chunk.text, // For text chunks, display text is the same
+                    displayText: chunk.text,
                     tokenCount: chunk.tokenCount,
                     originalIndexInChunks: i
                 });
-                i++;
                 continue;
             }
 
-            // Case 2: This is the start of one or more file upload chunks.
             if (chunk.driveDocument) {
                 const fileChunks = [];
-                // Step A: Collect all consecutive file uploads starting from here.
                 let fileScanIndex = i;
                 while (fileScanIndex < allChunks.length && allChunks[fileScanIndex].driveDocument && allChunks[fileScanIndex].role === 'user') {
                     fileChunks.push({ ...allChunks[fileScanIndex], originalIndexInChunks: fileScanIndex });
                     fileScanIndex++;
                 }
 
-                // Step B: Now, scan forward to find the very next text chunk.
                 let textChunk = null;
-                let textScanIndex = fileScanIndex;
-                while (textScanIndex < allChunks.length) {
+                for (let textScanIndex = fileScanIndex; textScanIndex < allChunks.length; textScanIndex++) {
                     if (allChunks[textScanIndex].role === 'user' && allChunks[textScanIndex].text) {
                         textChunk = allChunks[textScanIndex];
                         break;
                     }
-                    textScanIndex++;
                 }
 
-                // Step C: Extract filenames from that text chunk using a safer regex.
                 let cleanFilenames = [];
                 if (textChunk) {
-                    // This regex now looks for filenames with extensions, avoiding URLs.
                     const filenameRegex = /`([^`]+?\.\w+)`|\(([^)\s/]+\.\w+)\)/g;
                     const matches = [...textChunk.text.matchAll(filenameRegex)];
                     cleanFilenames = matches.map(match => match[1] || match[2]);
                 }
 
-                // Step D: Process the collected file chunks, assigning names in order.
                 fileChunks.forEach((fileChunk, index) => {
-                    let textForDisplay = '[Uploaded Document]'; // Default fallback
+                    // FIX: Use and increment the global counter for consistent numbering.
+                    globalFileCounter++; 
+                    let textForDisplay = `[Uploaded Document #${globalFileCounter}]`; // Use global counter
+                    
                     if (index < cleanFilenames.length) {
-                        // First file gets first name, second gets second, etc.
                         textForDisplay = `[File: ${cleanFilenames[index]}]`;
                     }
 
                     currentPrompts.push({
                         role: 'user',
-                        text: null, // File chunks have no real text content
+                        text: null,
                         displayText: textForDisplay,
                         tokenCount: fileChunk.tokenCount,
                         originalIndexInChunks: fileChunk.originalIndexInChunks
                     });
                 });
 
-                // Step E: Jump the main loop index past the file chunks we just processed.
-                i = fileScanIndex;
+                i = fileScanIndex - 1;
             }
         }
 
