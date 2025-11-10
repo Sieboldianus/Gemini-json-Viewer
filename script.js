@@ -706,21 +706,24 @@ function exportConversationToHtml() {
 
     console.log("Starting HTML export...");
 
+    // Create a lookup map from the already-processed prompts.
+    const promptDisplayTextMap = new Map();
+    currentPrompts.forEach(prompt => {
+        // The key is the chunk's original index, the value is its correct display text.
+        promptDisplayTextMap.set(prompt.originalIndexInChunks, prompt.displayText);
+    });
+
     // 1. Prepare Content Pieces
     const title = "AI Studio Prompt Archive";
     const allChunks = parsedData.chunkedPrompt?.chunks || [];
 
-    // --- Date handling logic ---
     let exportDateString;
-    // Look for a hypothetical 'creationTime' or 'exportTime' in the JSON data.
-    // This makes the script future-proof if the format changes.
     const jsonDate = parsedData.creationTime || parsedData.exportTime;
     if (jsonDate) {
         exportDateString = new Date(jsonDate).toLocaleDateString('en-US', {
             year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
         });
     } else {
-        // Fallback to the current date and time if no date is found in the JSON
         exportDateString = "Exported on " + new Date().toLocaleDateString('en-US', {
             year: 'numeric', month: 'long', day: 'numeric'
         });
@@ -731,7 +734,7 @@ function exportConversationToHtml() {
     const systemInstructionHtml = document.getElementById('system-instruction-container').outerHTML;
     const metadataHtml = runDetailsHtml + systemInstructionHtml + citationsHtml;
 
-    // Generate conversation HTML...
+    // Generate conversation HTML using our new lookup map
     const conversationContainer = document.createElement('div');
     for (let i = 0; i < allChunks.length; i++) {
         const chunk = allChunks[i];
@@ -743,29 +746,21 @@ function exportConversationToHtml() {
 
         let summaryText = 'Message';
         let summaryClass = '';
-        let previewText = chunk.text || '[No Text]';
-
-        if (chunk.driveDocument) {
-            previewText = '[Uploaded Document]';
-            const nextChunk = allChunks[i + 1];
-            if (nextChunk && nextChunk.role === 'user' && nextChunk.text) {
-                const filenameMatch = nextChunk.text.match(/`([^`]+)`/);
-                if (filenameMatch && filenameMatch[1]) {
-                    previewText = `[File: ${filenameMatch[1]}]`;
-                }
-            }
-        }
-
-        previewText = truncateText(previewText, 120);
+        let previewText;
 
         if (chunk.role === 'user') {
             summaryText = 'User Prompt';
             summaryClass = 'summary-user';
+            // Use the map to get the correct text for ANY user chunk.
+            previewText = promptDisplayTextMap.get(i) || chunk.text || '[User Prompt]';
         } else if (chunk.role === 'model') {
             summaryText = chunk.isThought ? 'Model (Thought Process)' : 'Model Response';
             summaryClass = chunk.isThought ? 'summary-thought' : 'summary-model';
+            previewText = chunk.text || '[No Text]';
         }
+        // --- END REFACTORED LOGIC ---
 
+        previewText = truncateText(previewText, 120);
         summary.className = `summary-base ${summaryClass}`;
         summary.innerHTML = `<strong>${summaryText}:</strong> <span>${DOMPurify.sanitize(previewText)}</span>`;
 
